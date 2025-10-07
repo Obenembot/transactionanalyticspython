@@ -17,7 +17,8 @@ page = streamlit.sidebar.radio("Go to", ["Overview", "Transaction Analytics"])
 
 if page == "Overview":
     streamlit.title("Overview Dashboard")
-
-    streamlit.dataframe(df)
-    # streamlit.write(df.groupby("HpId").size())
-# print("Welcome to Transaction Analytics !", df)
+    streamlit.dataframe(df, height=600)
+streamlit.set_page_config(
+    page_title="Customer Dashboard",
+    layout="wide"
+)
