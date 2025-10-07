@@ -1,5 +1,5 @@
 import pandas as pandas # Required for data manipulation
-import openpyxl as openpyxl # Required for Excel file handling
+# import openpyxl as openpyxl # Required for Excel file handling
 import streamlit as streamlit # Streamlit for web app
 
 # Load data from file
