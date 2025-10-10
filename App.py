@@ -1,4 +1,4 @@
-import openpyxl as openpyxl  # Required for Excel file handling
+# import openpyxl as openpyxl  # Required for Excel file handling
 import pandas as pandas  # Required for data manipulation
 import streamlit as streamlit  # Streamlit for web app
 
@@ -9,7 +9,6 @@ df = pandas.read_excel(file_path)
 # Convert Transaction Date to datetime
 df["TransactionDate"] = pandas.to_datetime(df["TransactionDate"])
 
-print(openpyxl)
 #  Set the sidebar for navigation
 streamlit.sidebar.title("Navigation")
 page = streamlit.sidebar.radio("Go to", ["Overview", "Transaction Analytics"])
