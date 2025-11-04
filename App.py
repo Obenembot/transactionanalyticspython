@@ -129,15 +129,14 @@ def customer_next_transaction():
         future_forecast = forecast[forecast['ds'] > last_date]
 
         # ✅ Pick the top 3 highest forecast values
-        top3 = future_forecast.nlargest(4, 'yhat')
+        top3 = future_forecast.nlargest(3, 'yhat')
 
         predictions.append({
             "HpId": cust,
             "Last Transaction Date": last_date.date(),
             "Prediction 1": top3.iloc[0]['ds'].date() if len(top3) > 0 else None,
             "Prediction 2": top3.iloc[1]['ds'].date() if len(top3) > 1 else None,
-            "Prediction 3": top3.iloc[2]['ds'].date() if len(top3) > 2 else None,
-            "Prediction 4": top3.iloc[3]['ds'].date() if len(top3) > 2 else None
+            "Prediction 3": top3.iloc[2]['ds'].date() if len(top3) > 2 else None
         })
 
     # ✅ Display skipped customers
