@@ -15,7 +15,7 @@ df["TransactionDate"] = pandas.to_datetime(df["TransactionDate"])
 
 #  Set the sidebar for navigation
 streamlit.sidebar.title("Navigation")
-page = streamlit.sidebar.radio("Go to", ["Overview", "Transaction Analytics", "Customer Next Transaction"])
+page = streamlit.sidebar.radio("Go to", ["Overview", "Transaction Analytics", "Customer Next Transaction", "Days Prediction"])
 
 
 def display_beneficiary_transactions():
@@ -86,79 +86,81 @@ def display_next_transaction_prediction():
     streamlit.dataframe(pred_df)
 
 
+import pandas as pd
+from prophet import Prophet
+import streamlit as st
+
 def customer_next_transaction():
     # Load Data
     file_path = "predictCustomer.xlsx"
-    customer_data = pandas.read_excel(file_path)
+    customer_data = pd.read_excel(file_path)
 
-    # ✅ Convert to datetime, drop invalids
-    customer_data['TransactionDate'] = pandas.to_datetime(customer_data['TransactionDate'], errors='coerce')
+    # Convert TransactionDate to datetime, drop invalids
+    customer_data['TransactionDate'] = pd.to_datetime(customer_data['TransactionDate'], errors='coerce')
     customer_data = customer_data.dropna(subset=['TransactionDate'])
 
-    # ✅ Standardize columns for Prophet
-    customer_data = customer_data.rename(columns={'TransactionDate': 'ds'})
-    customer_data['y'] = 1  # Prophet requires a numeric target
-
-    streamlit.title("📈 Customer Next 3 Transaction Predictions (Prophet ML)")
-    streamlit.write("Forecasting next expected transaction dates using historical transactions")
+    st.title("📈 Customer Next 3 Transaction Predictions (Prophet ML)")
+    st.write("Forecasting next expected transaction dates using transaction gaps")
 
     predictions = []
     skipped_customers = []
 
-    # ✅ Loop through each unique customer
     for cust in customer_data['HpId'].unique():
+        cust_df = customer_data[customer_data['HpId'] == cust].sort_values('TransactionDate').copy()
+        cust_df = cust_df.dropna(subset=['TransactionDate'])
 
-        cust_df = customer_data[customer_data['HpId'] == cust].copy()
-        cust_df = cust_df.dropna(subset=['ds'])
-
-        # ✅ Prophet needs at least 2 unique historical dates
-        if cust_df['ds'].nunique() < 2:
+        if len(cust_df) < 2:
             skipped_customers.append(cust)
             continue
 
-        # ✅ Fit Prophet model
-        model = Prophet()
-        model.fit(cust_df[['ds', 'y']])
+        # Calculate gaps between transactions
+        cust_df['delta_days'] = cust_df['TransactionDate'].diff().dt.days
+        cust_df = cust_df.dropna(subset=['delta_days'])
 
-        # ✅ Predict the next 120 days
-        future = model.make_future_dataframe(periods=120)
+        if len(cust_df) < 2:
+            skipped_customers.append(cust)
+            continue
+
+        # Prepare data for Prophet
+        prophet_df = cust_df[['TransactionDate', 'delta_days']].rename(columns={'TransactionDate':'ds', 'delta_days':'y'})
+
+        model = Prophet()
+        model.fit(prophet_df)
+
+        # Forecast next 3 transaction gaps
+        future = model.make_future_dataframe(periods=3)
         forecast = model.predict(future)
 
-        # ✅ Consider only future dates (after last transaction)
-        last_date = cust_df['ds'].max()
-        future_forecast = forecast[forecast['ds'] > last_date]
-
-        # ✅ Pick the top 3 highest forecast values
-        top3 = future_forecast.nlargest(3, 'yhat')
+        # Take the last 3 predicted gaps and add to last transaction date
+        last_date = cust_df['TransactionDate'].max()
+        next_gaps = forecast['yhat'][-3:].values
+        next_dates = [last_date + pd.Timedelta(days=int(gap)) for gap in next_gaps]
 
         predictions.append({
             "HpId": cust,
             "Last Transaction Date": last_date.date(),
-            "Prediction 1": top3.iloc[0]['ds'].date() if len(top3) > 0 else None,
-            "Prediction 2": top3.iloc[1]['ds'].date() if len(top3) > 1 else None,
-            "Prediction 3": top3.iloc[2]['ds'].date() if len(top3) > 2 else None
+            "Prediction 1": next_dates[0].date() if len(next_dates) > 0 else None,
+            "Prediction 2": next_dates[1].date() if len(next_dates) > 1 else None,
+            "Prediction 3": next_dates[2].date() if len(next_dates) > 2 else None
         })
 
-    # ✅ Display skipped customers
     if skipped_customers:
-        streamlit.warning(f"⚠️ Skipped {len(skipped_customers)} customers with insufficient data: {skipped_customers}")
+        st.warning(f"⚠️ Skipped {len(skipped_customers)} customers with insufficient data: {skipped_customers}")
 
-    # ✅ Create result DataFrame
-    pred_df = pandas.DataFrame(predictions).sort_values("HpId")
+    pred_df = pd.DataFrame(predictions).sort_values("HpId")
 
-    # ✅ Save output file
     output_path = "customer_prophet_top3_predictions.xlsx"
     pred_df.to_excel(output_path, index=False)
 
-    # ✅ UI output
-    streamlit.subheader("🔮 Top 3 Predicted Next Transactions per Customer")
-    streamlit.dataframe(pred_df)
+    st.subheader("🔮 Top 3 Predicted Next Transactions per Customer")
+    st.dataframe(pred_df)
 
-    streamlit.download_button(
+    st.download_button(
         label="📥 Download Predictions Excel",
         data=open(output_path, "rb"),
         file_name="customer_prophet_top3_predictions.xlsx"
     )
+
 
 
 if page == "Overview":
@@ -198,6 +200,11 @@ elif page == "Customer Next Transaction":
     streamlit.write("Feature under development.")
     # display_next_transaction_prediction()
     customer_next_transaction()
+elif page == "Days Prediction":
+    streamlit.title("Days Prediction Dashboard")
+    streamlit.write("This section will predict the number of days until the customer's next transaction.")
+    streamlit.write("Feature under development.")
+    display_next_transaction_prediction()
 
 streamlit.set_page_config(
     page_title="Customer Dashboard",
