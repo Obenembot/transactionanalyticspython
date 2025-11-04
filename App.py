@@ -1,5 +1,4 @@
 import warnings
-
 import pandas as pandas  # Required for data manipulation
 import streamlit as streamlit  # Streamlit for web app
 from prophet import Prophet  # For time series forecasting first by facebook to determine patters
@@ -86,21 +85,19 @@ def display_next_transaction_prediction():
     streamlit.dataframe(pred_df)
 
 
-import pandas as pd
-from prophet import Prophet
-import streamlit as st
+
 
 def customer_next_transaction():
     # Load Data
     file_path = "predictCustomer.xlsx"
-    customer_data = pd.read_excel(file_path)
+    customer_data = pandas.read_excel(file_path)
 
     # Convert TransactionDate to datetime, drop invalids
-    customer_data['TransactionDate'] = pd.to_datetime(customer_data['TransactionDate'], errors='coerce')
+    customer_data['TransactionDate'] = pandas.to_datetime(customer_data['TransactionDate'], errors='coerce')
     customer_data = customer_data.dropna(subset=['TransactionDate'])
 
-    st.title("📈 Customer Next 3 Transaction Predictions (Prophet ML)")
-    st.write("Forecasting next expected transaction dates using transaction gaps")
+    streamlit.title("📈 Customer Next 3 Transaction Predictions (Prophet ML)")
+    streamlit.write("Forecasting next expected transaction dates using transaction gaps")
 
     predictions = []
     skipped_customers = []
@@ -134,7 +131,7 @@ def customer_next_transaction():
         # Take the last 3 predicted gaps and add to last transaction date
         last_date = cust_df['TransactionDate'].max()
         next_gaps = forecast['yhat'][-3:].values
-        next_dates = [last_date + pd.Timedelta(days=int(gap)) for gap in next_gaps]
+        next_dates = [last_date + pandas.Timedelta(days=int(gap)) for gap in next_gaps]
 
         predictions.append({
             "HpId": cust,
@@ -145,17 +142,17 @@ def customer_next_transaction():
         })
 
     if skipped_customers:
-        st.warning(f"⚠️ Skipped {len(skipped_customers)} customers with insufficient data: {skipped_customers}")
+        streamlit.warning(f"⚠️ Skipped {len(skipped_customers)} customers with insufficient data: {skipped_customers}")
 
-    pred_df = pd.DataFrame(predictions).sort_values("HpId")
+    pred_df = pandas.DataFrame(predictions).sort_values("Last Transaction Date", ascending=False)
 
     output_path = "customer_prophet_top3_predictions.xlsx"
     pred_df.to_excel(output_path, index=False)
 
-    st.subheader("🔮 Top 3 Predicted Next Transactions per Customer")
-    st.dataframe(pred_df)
+    streamlit.subheader("🔮 Top 3 Predicted Next Transactions per Customer")
+    streamlit.dataframe(pred_df)
 
-    st.download_button(
+    streamlit.download_button(
         label="📥 Download Predictions Excel",
         data=open(output_path, "rb"),
         file_name="customer_prophet_top3_predictions.xlsx"
